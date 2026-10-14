@@ -1,0 +1,6 @@
+interface:
+  display_name: "TaskDeck Skills"
+  short_description: "将长任务转为可恢复后台作业，同步交付清晰美观的 HTML 进度监控页"
+  default_prompt: "使用 $task-deck-skills 执行这个长任务，规划批次，后台运行，并在启动时创建持续更新的 HTML 监控页。"
+policy:
+  allow_implicit_invocation: false
