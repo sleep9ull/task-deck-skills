@@ -19,7 +19,7 @@ description: 将用户指定的长任务组织为可恢复的后台作业，在�
 
 ## 2. 先交付监控入口，再启动工作
 
-读取 [状态契约](references/status-contract.md)，创建真实的 `status.json`，初始状态为 `planned`。马上生成并打开 HTML；不等首批完成或整个任务结束才创建页面。
+读取 [状态契约](references/status-contract.md)，创建真实的 `status.json`，初始状态为 `planned`。按状态契约填写本任务外部 AI API 的模型、输入/输出 token 与成本预估，显示在总进度下方；未知用量保留未知，无需调用时明确标记。马上生成并打开 HTML；不等首批完成或整个任务结束才创建页面。
 
 ```bash
 python3 <skill目录>/scripts/render_dashboard.py \

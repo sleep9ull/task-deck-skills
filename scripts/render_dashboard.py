@@ -2,6 +2,7 @@
 """Render an offline TaskDeck snapshot. This helper does not execute business jobs."""
 import argparse
 import datetime as dt
+from decimal import Decimal
 import json
 import math
 from pathlib import Path
@@ -93,9 +94,40 @@ def validate(data):
     return totals
 
 
+def estimate_ai_services(data):
+    services = data.get('ai_services')
+    if services is None:
+        return None
+    if not isinstance(services, list):
+        raise ValueError('ai_services must be an array or null')
+    estimates = []
+    for service in services:
+        if not isinstance(service, dict):
+            raise ValueError('Each ai_services entry must be an object')
+        for key in ('provider', 'model'):
+            if not isinstance(service.get(key), str) or not service[key].strip():
+                raise ValueError('ai_services.' + key + ' is required')
+        if service.get('currency') not in {'USD', 'CNY'}:
+            raise ValueError('ai_services.currency must be USD or CNY')
+        for key in ('input_tokens', 'output_tokens'):
+            if service.get(key) is not None:
+                count(service[key], 'ai_services.' + key)
+        for key in ('input_per_million', 'output_per_million'):
+            value = service.get(key)
+            if value is not None and (type(value) not in (int, float) or not math.isfinite(value) or value < 0):
+                raise ValueError('Invalid ai_services rate: ' + key)
+        keys = ('input_tokens', 'output_tokens', 'input_per_million', 'output_per_million')
+        cost = None
+        if all(service.get(key) is not None for key in keys):
+            cost = str((Decimal(service['input_tokens']) * Decimal(str(service['input_per_million']))
+                        + Decimal(service['output_tokens']) * Decimal(str(service['output_per_million']))) / Decimal(1000000))
+        estimates.append(dict(service, estimated_cost=cost))
+    return estimates
+
+
 def render(data, output, refresh=15):
     totals = validate(data)
-    payload = dict(data, totals=totals, refresh_seconds=refresh)
+    payload = dict(data, totals=totals, ai_services=estimate_ai_services(data), refresh_seconds=refresh)
     # JSON inside script elements must not be able to terminate the element.
     encoded = json.dumps(payload, ensure_ascii=False, allow_nan=False).replace('&', '\\u0026').replace('<', '\\u003c').replace('>', '\\u003e').replace('\u2028', '\\u2028').replace('\u2029', '\\u2029')
     template = (ROOT / 'assets' / 'dashboard.html').read_text(encoding='utf-8')
@@ -123,6 +155,12 @@ def demo():
         'run': {'id': 'demo-document-pass', 'title': '文档批量转换', 'description': '按目录分批处理原始文档，保留原件、输出记录与可恢复检查点。',
             'state': 'running', 'host': 'demo-worker', 'concurrency': 5, 'started_at': stamp(2400), 'updated_at': stamp(2),
             'heartbeat_at': stamp(2), 'stale_after_seconds': 90, 'process': {'alive': None, 'verified_at': None}},
+        'ai_services': [
+            {'provider': '美国 API · 演示', 'model': '示例模型 US', 'currency': 'USD',
+             'input_tokens': 1200000, 'output_tokens': 300000, 'input_per_million': 2, 'output_per_million': 8},
+            {'provider': '中国 API · 演示', 'model': '示例模型 CN', 'currency': 'CNY',
+             'input_tokens': 800000, 'output_tokens': 200000, 'input_per_million': 1, 'output_per_million': 2},
+        ],
         'batches': batches, 'telemetry': {'throughput_per_hour': 960, 'eta_seconds': 1350},
         'events': [
             {'at': stamp(280), 'level': 'info', 'message': '第二组已提交检查点 · 200 件'},
