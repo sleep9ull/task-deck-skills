@@ -1,36 +1,68 @@
 # TaskDeck Skills
 
-长任务的执行与监控台。显式调用 `$task-deck-skills`，让 agent 在组织后台执行的同时创建 HTML 监控入口，并持续保存检查点、批次结果和状态。
+[![English](https://img.shields.io/badge/English-selected-2563eb?style=for-the-badge)](README.md) [![简体中文](https://img.shields.io/badge/简体中文-切换语言-64748b?style=for-the-badge)](README.zh-CN.md)
 
-这是纯 skill 仓库：入口为 [SKILL.md](SKILL.md)，附带离线 HTML 模板和 Python 标准库渲染器，不包含常驻业务服务。业务 worker 由 agent 按实际任务创建或复用。
+An agent skill for running long tasks in the background with a live HTML progress dashboard. Invoke `$task-deck-skills` to plan batches, save checkpoints, track results, and keep progress visible from the start.
 
-## 安装与调用
+Use it for batch processing, data collection, migrations, generation, and analysis. The repository includes the [skill instructions](SKILL.md), an offline HTML template, and a renderer built with the Python standard library. Your agent creates or reuses the worker needed for each task.
 
-将本仓库作为 `task-deck-skills` 文件夹放入支持的 skills 目录。Codex 本机可在本仓库根目录创建符号链接（目标不存在时）：
+## Installing TaskDeck
+
+Clone this repository into a supported skills directory, or link an existing checkout. For local Codex, run the following from the repository root, provided the destination does not already exist:
 
 ```bash
 mkdir -p "$HOME/.codex/skills"
 ln -s "$PWD" "$HOME/.codex/skills/task-deck-skills"
 ```
 
-本 skill 配置为显式调用，不会因为普通请求可能耗时而自动接管。
+Keep the checkout in place while using this symbolic link. Rendering the dashboard requires Python 3; no third-party Python packages or web server are needed.
+
+## Using TaskDeck
+
+Explicitly invoke the skill in Codex with `$task-deck-skills` and describe the task, constraints, and expected output:
 
 ```text
-使用 $task-deck-skills 处理这个长任务：按目录分批转换文件，
-并发 3，保留原件。后台运行，在启动时给我 HTML 监控页。
+Use $task-deck-skills to convert files in batches by directory,
+with concurrency 3, preserving the originals. Run in the background
+and give me an HTML progress dashboard when the task starts.
 ```
 
-## 预览模板
+The skill is configured for explicit invocation. It does not automatically take over a request just because the work may take a long time.
+
+## What TaskDeck Does
+
+- Plans batches with stable IDs, a defined scope, and acceptance criteria.
+- Creates the dashboard before work begins, then updates it from saved state.
+- Guides resumable background execution with checkpoints, logs, and process verification.
+- Tracks successful, failed, and review-needed items, with searchable batches and result links.
+- Verifies outputs and preserves a final snapshot with results and unresolved issues.
+
+The dashboard is a view of recorded state. Its renderer does not run workers or collect their status; those processes must run independently in the background.
+
+## Previewing the Dashboard
+
+From the repository root, generate a standalone HTML preview:
 
 ```bash
 python3 scripts/render_dashboard.py --demo --output /tmp/task-deck-demo/index.html
 ```
 
-生成的是带“演示数据”标识的独立 HTML，不会启动业务任务。真实任务用：
+Open `/tmp/task-deck-demo/index.html` in your browser. The page is marked as demo data and does not start a task.
+
+For a real run, render an existing status file and refresh the HTML every five seconds:
 
 ```bash
 python3 scripts/render_dashboard.py \
   --state /path/to/run/status.json --output /path/to/run/index.html --watch 5
 ```
 
-渲染监听器只刷新页面文件；worker 和状态采集仍须在后台独立运行。详细状态格式见 [状态契约](references/status-contract.md)。
+Replace the example paths with your run directory. Open the generated HTML directly in a browser; it works offline without a development server or CDN.
+
+## Reference
+
+- [Skill instructions](SKILL.md): planning, execution, supervision, and delivery.
+- [Status contract](references/status-contract.md): state format, progress counts, and optional AI token and cost estimates.
+- [Background execution and recovery](references/execution.md): workers, checkpoints, and resuming runs.
+- [Interface guidelines](references/interface.md): dashboard layout and truthful status presentation.
+
+The skill and reference documents are currently written in Chinese.
